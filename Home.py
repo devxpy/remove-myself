@@ -1,9 +1,10 @@
-import os
+import json
 
 import streamlit as st
-from decouple import config, UndefinedValueError
+from decouple import config
 
 SPREADSHEET_ID = config("SPREADSHEET_ID")
+SERVICE_ACCOUNT_KEY_JSON = config("SERVICE_ACCOUNT_KEY_JSON")
 
 
 def main():
@@ -30,6 +31,10 @@ def main():
             ).strip()
         with col2:
             submitted = st.form_submit_button("Search")
+
+    if not query:
+        st.experimental_set_query_params()
+        return
 
     if submitted:
         st.experimental_set_query_params(q=query)
@@ -149,27 +154,11 @@ def get_spreadsheet_service():
     scope = [
         "https://www.googleapis.com/auth/drive",
     ]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        get_service_account_key_path(), scope
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        json.loads(SERVICE_ACCOUNT_KEY_JSON), scope
     )
     service = build("sheets", "v4", credentials=creds)
     return service.spreadsheets()
-
-
-@st.cache_resource
-def get_service_account_key_path() -> str:
-    service_account_key_path = "serviceAccountKey.json"
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key_path
-    # save json file from env var if available
-    try:
-        _json = config("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-    except UndefinedValueError:
-        pass
-    else:
-        with open(service_account_key_path, "w") as f:
-            f.write(_json)
-
-    return service_account_key_path
 
 
 if __name__ == "__main__":
